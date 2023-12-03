@@ -15,7 +15,7 @@ enum PacketType : uint8_t{
 
 struct Packet {
     uint16_t MAGIC_HEAD;
-    int8_t PACKET_VERSION;
+    int8_t VERSION;
     PacketType TYPE;
     size_t CONTENT_LENGTH;
     std::unique_ptr<uint8_t> CONTENT;

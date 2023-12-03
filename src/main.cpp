@@ -5,6 +5,8 @@ char* toHex(uint8_t value);
 
 void setup() {
   Serial.begin(9600);
+  while(!Serial);
+  
   auto length = 6;
   uint8_t content[] = {0xBA, 0xBE, 0xBA, 0xBE, 0xBA, 0xBE};
 
@@ -12,8 +14,6 @@ void setup() {
     Serial.write(toHex(value));
     Serial.write(' ');
   };
-  
-  delay(2000);
 
   write_data(std::unique_ptr<uint8_t>(content), length, writer);
 }
@@ -25,5 +25,5 @@ char* toHex(uint8_t number){
 }
 
 void loop() {
-  
+    delay(1);
 }

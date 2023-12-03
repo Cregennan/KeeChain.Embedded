@@ -10,7 +10,7 @@ void write_packet(std::shared_ptr<Packet> packet, std::function<void(uint8_t)> w
     {
         write(head[i]);
     }
-    
+
     uint32_t crc = 0;
 
     for (size_t i = 0; i < packet->CONTENT_LENGTH; i++)
@@ -32,5 +32,6 @@ void write_data(std::unique_ptr<uint8_t> data, size_t length, std::function<void
     packet.CONTENT = std::move(data);
     packet.CONTENT_LENGTH = length;
     packet.TYPE = DATA;
+    packet.VERSION = 1;
     write_packet(std::shared_ptr<Packet>(&packet), write);
 }
