@@ -5,3 +5,11 @@
 .vscode/ipch
 
 .fake
+.vs
+.idea
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
+.pio
+out
