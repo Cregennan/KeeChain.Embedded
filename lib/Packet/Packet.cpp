@@ -13,6 +13,7 @@ SEND_STATUS PacketManager::send(std::vector<uint8_t>& vector){
     packet->CONTENT_LENGTH = vector.size();
     packet->TYPE = PacketType::DATA;
 
+    this->last_sent_packet = packet;
     return packet_manager::send_packet(packet, this->params);
 }
 
