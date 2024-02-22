@@ -5,20 +5,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++17-extensions"
 
+static const std::deque<uint8_t> MAGIC_HEADER_DEQUE = {0xBA, 0xBE};
 
-
-namespace packet{
-
-    struct InnerPacketV1 {
-        const uint16_t MAGIC = MAGIC_HEADER;
-        int8_t PACKET_VERSION = 1;
-        int8_t METADATA{};
-        PacketType TYPE;
-        size_t CONTENT_LENGTH{};
-        uint32_t CRC{};
-        std::unique_ptr<uint8_t> CONTENT;
-    };
-
+namespace packp{
 
     inline std::pair<RECEIVE_STATUS, std::shared_ptr<InnerPacketV1>> error_status(RECEIVE_STATUS status){
         return std::make_pair(status, std::nullptr_t());
@@ -52,11 +41,11 @@ namespace packet{
             if(buffer.size() < sizeof(MAGIC_HEADER)){
                 buffer.push_back(params.read());
             }
-            if (buffer == MAGIC_HEADER_BYTEWISE){
+            if (buffer == MAGIC_HEADER_DEQUE){
                 buffer.clear();
                 break;
             }else{ // Если байты в буфере не совпали - удаляем первый, готовимся считать очередной
-                buffer.erase(buffer.begin());
+                buffer.pop_front();
             }
 
             delay(params.pollingDelayMs);
@@ -85,49 +74,74 @@ namespace packet{
 
 namespace packet_manager{
 
-    std::pair<RECEIVE_STATUS, std::shared_ptr<packet::InnerPacketV1>> receive_packet(PacketManagerParams & params){
+    //Получение пакета
+    std::pair<RECEIVE_STATUS, std::shared_ptr<packp::InnerPacketV1>> receive_packet(PacketManagerParams & params){
 
         // Polling timeouts
         auto polling_start_time = millis();
 
         //Собираемый пакет
-        auto packet = new packet::InnerPacketV1();
-        auto magicBytesStatus = packet::read_magic_bytes(params, polling_start_time);
+        auto packet = new packp::InnerPacketV1();
+        auto magicBytesStatus = packp::read_magic_bytes(params, polling_start_time);
         if (magicBytesStatus != RECEIVE_STATUS::OK){
-            return packet::error_status(magicBytesStatus);
+            return packp::error_status(magicBytesStatus);
         }
 
         //Чтение заголовка
-        auto header_pointer = reinterpret_cast<uint8_t*>(packet) + sizeof(packet::InnerPacketV1::MAGIC);
-        auto hl_without_magic = sizeof(packet::InnerPacketV1) - sizeof(packet::InnerPacketV1::CONTENT) - sizeof(packet::InnerPacketV1::MAGIC);
+        auto header_pointer = reinterpret_cast<uint8_t*>(packet) + sizeof(packp::InnerPacketV1::MAGIC);
+        auto hl_without_magic = sizeof(packp::InnerPacketV1) - sizeof(packp::InnerPacketV1::CONTENT) - sizeof(packp::InnerPacketV1::MAGIC);
 
-        auto header_reading_status = packet::read_n_bytes(header_pointer, hl_without_magic, params, polling_start_time);
+        auto header_reading_status = packp::read_n_bytes(header_pointer, hl_without_magic, params, polling_start_time);
 
         if (header_reading_status != RECEIVE_STATUS::OK){
-            return packet::error_status(header_reading_status);
+            return packp::error_status(header_reading_status);
         }
 
         if (packet->CONTENT_LENGTH < 1){
-            return packet::error_status(RECEIVE_STATUS::MALFORMED);
+            return packp::error_status(RECEIVE_STATUS::MALFORMED);
         }
         if (packet->CONTENT_LENGTH > CONTENT_LENGTH_LIMIT_BYTES){
-            return packet::error_status(RECEIVE_STATUS::CONTENT_LENGTH_EXCEEDED);
+            return packp::error_status(RECEIVE_STATUS::CONTENT_LENGTH_EXCEEDED);
         }
 
         //Чтение содержимого
         auto content_pointer = new uint8_t[packet->CONTENT_LENGTH];
-        auto content_reading_status = packet::read_n_bytes(content_pointer, packet->CONTENT_LENGTH, params, polling_start_time);
+        auto content_reading_status = packp::read_n_bytes(content_pointer, packet->CONTENT_LENGTH, params, polling_start_time);
         if (content_reading_status != RECEIVE_STATUS::OK){
-            return packet::error_status(content_reading_status);
+            return packp::error_status(content_reading_status);
         }
 
         packet->CONTENT = std::unique_ptr<uint8_t>(content_pointer);
 
-        if (packet->CRC != packet::calculate_crc(packet->CONTENT.get(), packet->CONTENT_LENGTH)){
-            return packet::error_status(RECEIVE_STATUS::CRC_MISMATCH);
+        if (packet->CRC != packp::calculate_crc(packet->CONTENT.get(), packet->CONTENT_LENGTH)){
+            return packp::error_status(RECEIVE_STATUS::CRC_MISMATCH);
         }
 
-        return std::make_pair(RECEIVE_STATUS::OK, std::shared_ptr<packet::InnerPacketV1>(packet));
+        return std::make_pair(RECEIVE_STATUS::OK, std::shared_ptr<packp::InnerPacketV1>(packet));
     }
+
+    //Отправка пакета
+    SEND_STATUS send_packet(const std::shared_ptr<packp::InnerPacketV1>& packet, PacketManagerParams & params){
+        if (packet->CONTENT_LENGTH > CONTENT_LENGTH_LIMIT_BYTES){
+            return SEND_STATUS::CONTENT_LENGTH_EXCEEDED;
+        }
+        if (packet->CONTENT_LENGTH > 0 && packet->CONTENT == nullptr){
+            return SEND_STATUS::INVALID_CONTENT;
+        }
+
+        packet->CRC = packp::calculate_crc(packet->CONTENT.get(), packet->CONTENT_LENGTH);
+        auto head = reinterpret_cast<uint8_t*>(packet.get());
+        auto headerLength = sizeof(packp::InnerPacketV1) - sizeof(packet->CONTENT);
+        auto contentPointer = packet->CONTENT.get();
+
+        for (auto i = 0; i < headerLength; i++)
+        {
+            params.write(head[i]);
+        }
+        for(auto i = 0; i < packet->CONTENT_LENGTH; i++){
+            params.write(contentPointer[i]);
+        }
+    }
+
 }
 #pragma clang diagnostic pop

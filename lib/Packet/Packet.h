@@ -10,13 +10,11 @@ enum PacketType : uint8_t{
     DISCOVER,
     ALIVE,
     ACK,
-    DATA,
-    FIN
+    DATA
 };
 
-static const uint16_t MAGIC_HEADER = 0xBABA;
 
-static const std::deque<uint8_t> MAGIC_HEADER_BYTEWISE = {0xBA, 0xBE};
+static const uint16_t MAGIC_HEADER = 0xBABA;
 
 static const size_t CONTENT_LENGTH_LIMIT_BYTES = 256;
 
@@ -26,7 +24,8 @@ enum class RECEIVE_STATUS : uint8_t{
     TIMEOUT_REACHED,
     CRC_MISMATCH,
     CONTENT_LENGTH_EXCEEDED,
-    MALFORMED
+    MALFORMED,
+    INTERNAL_STATE_CORRUPTED
 };
 
 enum class SEND_STATUS : uint8_t{
@@ -43,27 +42,43 @@ struct Packet{
 };
 
 struct PacketManagerParams{
-    uint8_t (*read)();
-    void (*write)(uint8_t);
-    size_t (*available)();
+    uint8_t (*read)(){};
+    void (*write)(uint8_t){};
+    size_t (*available)(){};
     time_t pollingTimeout = 0;
     time_t pollingDelayMs = 20;
 };
 
+namespace packp{
+    struct InnerPacketV1 {
+        const uint16_t MAGIC = MAGIC_HEADER;
+        int8_t PACKET_VERSION = 1;
+        int8_t METADATA{};
+        PacketType TYPE;
+        size_t CONTENT_LENGTH{};
+        uint32_t CRC{};
+        std::shared_ptr<uint8_t> CONTENT;
+    };
+}
+
 class PacketManager{
+
+    enum class PacketManagerState : uint8_t{
+        LISTEN,
+        ESTABLISHED,
+        CLOSED
+    };
+
     public: 
-        SEND_STATUS send(const std::vector<uint8_t>& data);
+        SEND_STATUS send(std::vector<uint8_t>& vector);
 
-        std::pair<RECEIVE_STATUS, std::shared_ptr<Packet>> receive();
+        std::pair<RECEIVE_STATUS, Packet> receive();
 
-        explicit PacketManager(const PacketManagerParams& params);
+    __attribute__((unused)) explicit PacketManager(PacketManagerParams params);
 
     private:
-        uint8_t (*read)();
-        void (*write)(uint8_t);
-        size_t (*available)();
-        time_t pollingTimeout;
-        time_t pollingDelayMs;
+        std::shared_ptr<packp::InnerPacketV1> last_sent_packet;
+        PacketManagerParams params;
 };
 
 #endif
