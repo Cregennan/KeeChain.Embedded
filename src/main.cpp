@@ -1,10 +1,32 @@
+#include <Warlin.h>
 #include <Arduino.h>
-#include <Packet.h>
+
+Warlin_ Warlin;
+
+void discoverHandler(std::deque<std::string> & params);
 
 void setup() {
-    auto t = Serial.readString()
+    Serial.begin(DEFAULT_BAUDRATE);
+    while(!Serial)
+    {
+
+    }
+
+    Warlin.bind(PROTOCOL_REQUEST_TYPE::DISCOVER, discoverHandler);
 }
 
 void loop() {
-    delay(1);
+    if (Warlin.available())
+    {
+        Warlin.process();
+    }
+
+    delay(100);
 }
+
+void discoverHandler(std::deque<std::string> & params)
+{
+   Warlin.writeString("HELLO");
+}
+
+
