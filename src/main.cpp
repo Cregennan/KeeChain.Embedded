@@ -1,9 +1,9 @@
-#include <Warlin.h>
 #include <Arduino.h>
+#include <Vault.h>
+#include <Warlin.h>
 
 Warlin_ Warlin;
-time_t device_time;
-time_t sync_millis;
+Vault_ Vault;
 
 void discoverHandler(std::deque<std::string> & params);
 void syncHandler(std::deque<std::string> & params);
@@ -17,7 +17,6 @@ void setup() {
 
     Warlin.bind(PROTOCOL_REQUEST_TYPE::DISCOVER, discoverHandler);
     Warlin.bind(PROTOCOL_REQUEST_TYPE::SYNC, syncHandler);
-
 }
 
 void loop() {
@@ -41,8 +40,7 @@ void syncHandler(std::deque<std::string> & params)
         SendErrorMessage("Malformed request: 0 tokens provided, 1 required");
         return;
     }
-    device_time = std::stoi(params[0]);
-    sync_millis = millis();
+    auto result = Vault.Initialize(millis(), std::stoi(params[0]));
     Warlin.writeLine({"SYNCR"});
 }
 

@@ -104,13 +104,15 @@ void Warlin_::writeLine(const std::initializer_list<std::string>& args)
 std::string NameOf(const PROTOCOL_REQUEST_TYPE type)
 {
     const auto index = static_cast<uint8_t>(type);
-    return EnumReflector::For<PROTOCOL_REQUEST_TYPE>()[index].Name();
+    const auto& reflector = EnumReflector::For<PROTOCOL_REQUEST_TYPE>();
+    return reflector[index].Name();
 }
 
 std::string NameOf(const PROTOCOL_RESPONSE_TYPE type)
 {
     const auto index = static_cast<uint8_t>(type);
-    return EnumReflector::For<PROTOCOL_RESPONSE_TYPE>()[index].Name();
+    const auto& reflector = EnumReflector::For<PROTOCOL_RESPONSE_TYPE>();
+    return reflector[index].Name();
 }
 
 void SendDebugMessage(const char * const message)
