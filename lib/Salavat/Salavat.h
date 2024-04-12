@@ -1,8 +1,8 @@
 // (C) 2024 Takhir Latypov <cregennandev@gmail.com>
 // MIT License
 
-#ifndef KEECHAIN_VAULT_H_GUARD
-#define KEECHAIN_VAULT_H_GUARD
+#ifndef KEECHAIN_SALAVAT_H_GUARD
+#define KEECHAIN_SALAVAT_H_GUARD
 #pragma once
 #include <FlashStorage_SAMD.h>
 #include <EnumReflection.h>
@@ -59,7 +59,7 @@ struct VaultEntry
     int Digits;
 };
 
-class Vault_{
+class Salavat_{
 public:
     VAULT_ADD_ENTRY_RESULT addEntry(const std::string & name, const std::string & rawSecret, int digitsCount);
     VAULT_REMOVE_ENTRY_RESULT removeEntry(int entryId);
@@ -79,4 +79,4 @@ private:
     long clientUtc;
 };
 
-#endif //KEECHAIN_VAULT_H_GUARD
+#endif //KEECHAIN_SALAVAT_H_GUARD

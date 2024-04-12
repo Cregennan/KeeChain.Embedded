@@ -1,5 +1,5 @@
 // (c) 2024. Takhir Latypov <cregennandev@gmail.com>
-#include <Vault.h>
+#include <Salavat.h>
 #include <sha1.h>
 #include <TOTP.h>
 
@@ -16,7 +16,7 @@ bool verifySecretKey(const std::vector<uint8_t> & encryptedSecret, const std::ve
 
 std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vector<uint8_t> & secretKey);
 
-VAULT_INIT_RESULT Vault_::Initialize(time_t last_sync_millis, time_t client_utc) {
+VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_utc) {
     this->lastSyncMillis = last_sync_millis;
     this->clientUtc = client_utc;
 
@@ -75,14 +75,14 @@ VAULT_INIT_RESULT Vault_::Initialize(time_t last_sync_millis, time_t client_utc)
     return VAULT_INIT_RESULT::SUCCESS;
 }
 
-void Vault_::ForceReset() {
+void Salavat_::ForceReset() {
     EEPROM.write(0, EEPROM_MARKER_0);
     EEPROM.write(1, EEPROM_MARKER_1);
     EEPROM.write(2, 0); // <- default stored entries count
     EEPROM.commit();
 }
 
-VAULT_ADD_ENTRY_RESULT Vault_::addEntry(const std::string & name, const std::string & rawSecret, int digitsCount = 6) {
+VAULT_ADD_ENTRY_RESULT Salavat_::addEntry(const std::string & name, const std::string & rawSecret, int digitsCount = 6) {
     if (!this->Unlocked){
         return VAULT_ADD_ENTRY_RESULT::VAULT_IS_LOCKED;
     }
@@ -110,7 +110,7 @@ VAULT_ADD_ENTRY_RESULT Vault_::addEntry(const std::string & name, const std::str
     return VAULT_ADD_ENTRY_RESULT::SUCCESS;
 }
 
-VAULT_REMOVE_ENTRY_RESULT Vault_::removeEntry(int entryId) {
+VAULT_REMOVE_ENTRY_RESULT Salavat_::removeEntry(int entryId) {
     if(!this->Unlocked){
         return VAULT_REMOVE_ENTRY_RESULT::VAULT_IS_LOCKED;
     }
@@ -123,7 +123,7 @@ VAULT_REMOVE_ENTRY_RESULT Vault_::removeEntry(int entryId) {
     this->burnVaultEntries();
 }
 
-void Vault_::burnVaultEntries() {
+void Salavat_::burnVaultEntries() {
     EEPROM.write(0, EEPROM_MARKER_0);
     EEPROM.write(1, EEPROM_MARKER_1);
     EEPROM.write(2, VaultEntries.size());
@@ -144,7 +144,7 @@ void Vault_::burnVaultEntries() {
     EEPROM.commit();
 }
 
-VAULT_UNLOCK_RESULT Vault_::unlock(const std::string & password) {
+VAULT_UNLOCK_RESULT Salavat_::unlock(const std::string & password) {
     if (password.empty() || password.size() > TOTP_KEY_PASSWORD_MAX_LENGTH){
         return VAULT_UNLOCK_RESULT::MALFORMED_PASSWORD;
     }
@@ -172,7 +172,7 @@ VAULT_UNLOCK_RESULT Vault_::unlock(const std::string & password) {
     }
 }
 
-std::pair<VAULT_GET_KEY_RESULT, std::string> Vault_::getKey(int entryId) {
+std::pair<VAULT_GET_KEY_RESULT, std::string> Salavat_::getKey(int entryId) {
     if (!this->Initialized){
         return std::make_pair(VAULT_GET_KEY_RESULT::VAULT_NOT_INITIALIZED,std::string());
     }

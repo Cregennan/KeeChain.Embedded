@@ -1,9 +1,9 @@
 #include <Arduino.h>
-#include <Vault.h>
-#include <Warlin.h>
+#include "Salavat.h"
+#include "Warlin.h"
 
 Warlin_ Warlin;
-Vault_ Vault;
+Salavat_ Salavat;
 
 void discoverHandler(std::deque<std::string> & params);
 void syncHandler(std::deque<std::string> & params);
@@ -40,7 +40,7 @@ void syncHandler(std::deque<std::string> & params)
         SendErrorMessage("Malformed request: 0 tokens provided, 1 required");
         return;
     }
-    auto result = Vault.Initialize(millis(), std::stoi(params[0]));
+    auto result = Salavat.Initialize(millis(), std::stoi(params[0]));
     Warlin.writeLine({"SYNCR"});
 }
 
