@@ -9,6 +9,7 @@
 #include <deque>
 #include <unordered_map>
 #include <EnumReflection.h>
+#include <vector>
 
 #define KEECHAIN_DEBUG_ENABLED // Закомментировать в продакшене
 
@@ -26,8 +27,9 @@ Z_ENUM_NS(
     PROTOCOL_REQUEST_TYPE,
     DISCOVER,
     SYNC,
-    DH_KEY_PROPOSAL,
-    STORE_SECRET,
+    UNLOCK,
+    GET_ENTRIES,
+    STORE_ENTRY,
     GET_TOTP,
     SERVICE_TRY_READ_EEPROM
 );
@@ -36,7 +38,9 @@ Z_ENUM_NS(
     PROTOCOL_RESPONSE_TYPE,
     ACK,
     SYNCR,
-    SERVICE
+    SERVICE,
+    ENTRIES,
+    ERROR
 );
 
 class Warlin_
@@ -48,6 +52,8 @@ class Warlin_
         Warlin_();
         void writeLine(const std::string & str);
         void writeLine(const std::initializer_list<std::string> & args);
+        void writeLine(PROTOCOL_RESPONSE_TYPE type, std::vector<std::string> & params);
+        void writeLine(PROTOCOL_RESPONSE_TYPE type);
     private:
         std::unordered_map<PROTOCOL_REQUEST_TYPE, void(*)(std::deque<std::string>&)> listeners{};
 };

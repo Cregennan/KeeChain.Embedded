@@ -198,6 +198,18 @@ std::vector<uint8_t> Salavat_::_service_read_eeprom_header() {
     return t;
 }
 
+std::size_t Salavat_::secretsCount() {
+    return this->VaultEntries.size();
+}
+
+std::vector<std::string> Salavat_::getEntryNames() {
+    std::vector<std::string> acc(this->VaultEntries.size());
+    for (const auto &item: this->VaultEntries){
+        acc.push_back(item.Name);
+    }
+    return acc;
+}
+
 std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vector<uint8_t> & secretKey) {
     std::vector<uint8_t> result;
     result.reserve(rawSecret.size() + 4);
