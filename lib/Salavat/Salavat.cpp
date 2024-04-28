@@ -2,6 +2,8 @@
 #include <Salavat.h>
 #include <sha1.h>
 #include <TOTP.h>
+#include "FlashStorage_SAMD.h"
+#include "Warlin.h"
 
 const auto EEPROM_MARKER_0 = 0xBA;
 const auto EEPROM_MARKER_1 = 0xBE;
@@ -23,14 +25,10 @@ VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_ut
     auto entriesCount = EEPROM.read(2);
 
     if (EEPROM_MARKER_0 != EEPROM.read(0)
-        && EEPROM_MARKER_1 != EEPROM.read(1)
-        && TOTP_KEYS_COUNT_LIMIT > entriesCount){
+        || EEPROM_MARKER_1 != EEPROM.read(1)
+        || entriesCount > TOTP_KEYS_COUNT_LIMIT){
 
-        entriesCount = 0; // <- default stored entries count
-        EEPROM.write(0, EEPROM_MARKER_0);
-        EEPROM.write(1, EEPROM_MARKER_1);
-        EEPROM.write(2, entriesCount);
-        EEPROM.commit();
+        ForceReset();
 
         this->Initialized = true;
 
@@ -38,6 +36,8 @@ VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_ut
     }
 
     auto grandOffset = 3;
+
+    SendDebugMessage("ENTRIES FOUND: ", std::to_string(entriesCount).c_str());
 
     for(auto i = 0; i < entriesCount; i++){
         //Secret name
@@ -121,6 +121,8 @@ VAULT_REMOVE_ENTRY_RESULT Salavat_::removeEntry(int entryId) {
     VaultEntries.erase(VaultEntries.begin() + entryId);
     RawKeys.erase(RawKeys.begin() + entryId);
     this->burnVaultEntries();
+
+    return VAULT_REMOVE_ENTRY_RESULT::SUCCESS;
 }
 
 void Salavat_::burnVaultEntries() {
@@ -186,6 +188,14 @@ std::pair<VAULT_GET_KEY_RESULT, std::string> Salavat_::getKey(int entryId) {
     TOTP totp(&this->SecretKey.front(), (int)this->SecretKey.size());
     auto code = totp.getCode(this->clientUtc + (long)((millis() - this->lastSyncMillis) / 60));
     return std::make_pair(VAULT_GET_KEY_RESULT::SUCCESS, std::string(code, code + 6));
+}
+
+std::vector<uint8_t> Salavat_::_service_read_eeprom_header() {
+    std::vector<uint8_t> t{};
+    t.push_back(EEPROM.read(0));
+    t.push_back(EEPROM.read(1));
+    t.push_back(EEPROM.read(2));
+    return t;
 }
 
 std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vector<uint8_t> & secretKey) {

@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <EnumReflection.h>
 
-#define KEECHAIN_DEBUG_ALLOWED // Закомментировать в продакшене
+#define KEECHAIN_DEBUG_ENABLED // Закомментировать в продакшене
 
 static constexpr auto PROTOCOL_MAGIC_BEGIN = "WARLIN";
 
@@ -28,13 +28,15 @@ Z_ENUM_NS(
     SYNC,
     DH_KEY_PROPOSAL,
     STORE_SECRET,
-    GET_TOTP
+    GET_TOTP,
+    SERVICE_TRY_READ_EEPROM
 );
 
 Z_ENUM_NS(
     PROTOCOL_RESPONSE_TYPE,
     ACK,
-    SYNC
+    SYNCR,
+    SERVICE
 );
 
 class Warlin_

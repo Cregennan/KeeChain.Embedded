@@ -4,7 +4,6 @@
 #ifndef KEECHAIN_SALAVAT_H_GUARD
 #define KEECHAIN_SALAVAT_H_GUARD
 #pragma once
-#include <FlashStorage_SAMD.h>
 #include <EnumReflection.h>
 #include <string>
 #include <vector>
@@ -67,6 +66,7 @@ public:
     void ForceReset();
     VAULT_INIT_RESULT Initialize(time_t last_sync_millis, time_t client_utc);
     VAULT_UNLOCK_RESULT unlock(const std::string & password);
+    std::vector<uint8_t> _service_read_eeprom_header();
 private:
     void burnVaultEntries();
 

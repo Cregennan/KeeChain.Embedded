@@ -90,15 +90,13 @@ void Warlin_::writeLine(const std::initializer_list<std::string>& args)
 {
     Serial.write(PROTOCOL_MAGIC_BEGIN);
     Serial.write(DEFAULT_DELIMITER);
-    auto current = args.begin();
-    Serial.write(current->c_str());
-    for(current++; current != args.end(); current++)
-    {
+    auto iterator = args.begin();
+    Serial.write((*iterator++).c_str());
+    while(iterator != args.end()) {
+        Serial.write((*iterator++).c_str());
         Serial.write(DEFAULT_DELIMITER);
-        Serial.write(current->c_str());
     }
     Serial.write('\n');
-    delete current;
 }
 
 std::string NameOf(const PROTOCOL_REQUEST_TYPE type)
@@ -117,17 +115,17 @@ std::string NameOf(const PROTOCOL_RESPONSE_TYPE type)
 
 void SendDebugMessage(const char * const message)
 {
-#ifdef KEECHAIN_DEBUG_ALLOWED
-    Serial.write(PROTOCOL_DEBUG_BEGIN);
-    Serial.write(": ");
-    Serial.write(message);
-    Serial.write('\n');
-#endif
+    #ifdef KEECHAIN_DEBUG_ENABLED
+        Serial.write(PROTOCOL_DEBUG_BEGIN);
+        Serial.write(": ");
+        Serial.write(message);
+        Serial.write('\n');
+    #endif
 }
 
 void SendDebugMessage(const char* part1, const char* part2)
 {
-#ifdef KEECHAIN_DEBUG_ALLOWED
+#ifdef KEECHAIN_DEBUG_ENABLED
     Serial.write(PROTOCOL_DEBUG_BEGIN);
     Serial.write(": ");
     Serial.write(part1);
