@@ -93,8 +93,8 @@ void Warlin_::writeLine(const std::initializer_list<std::string>& args)
     auto iterator = args.begin();
     Serial.write((*iterator++).c_str());
     while(iterator != args.end()) {
-        Serial.write((*iterator++).c_str());
         Serial.write(DEFAULT_DELIMITER);
+        Serial.write((*iterator++).c_str());
     }
     Serial.write('\n');
 }
@@ -109,12 +109,14 @@ void Warlin_::writeLine(PROTOCOL_RESPONSE_TYPE type, std::vector<std::string> &p
             Serial.write(item.c_str());
         }
     }
+    Serial.write('\n');
 }
 
 void Warlin_::writeLine(PROTOCOL_RESPONSE_TYPE type) {
     Serial.write(PROTOCOL_MAGIC_BEGIN);
     Serial.write(DEFAULT_DELIMITER);
     Serial.write(NameOf(type).c_str());
+    Serial.write('\n');
 }
 
 std::string NameOf(const PROTOCOL_REQUEST_TYPE type)
