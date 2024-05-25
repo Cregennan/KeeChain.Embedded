@@ -63,23 +63,30 @@ class Salavat_{
 public:
     VAULT_ADD_ENTRY_RESULT addEntry(const std::string & name, const std::string & rawSecret, int digitsCount);
     VAULT_REMOVE_ENTRY_RESULT removeEntry(int entryId);
-    std::pair<VAULT_GET_KEY_RESULT, std::string> getKey(int entryId);
+    std::pair<VAULT_GET_KEY_RESULT, std::string> getKey(int entryId, long currentUtc);
     void ForceReset();
-    VAULT_INIT_RESULT Initialize(time_t last_sync_millis, time_t client_utc);
+    VAULT_INIT_RESULT Initialize();
     VAULT_UNLOCK_RESULT unlock(const std::string & password);
     std::vector<uint8_t> _service_read_eeprom_header();
     std::size_t secretsCount();
     std::vector<std::string> getEntryNames();
 private:
+    /*
+     * Прожиг состояния хранилища на плату
+     * @warning Использовать с осторожностью! Тратит ресурс микросхемы памяти
+     */
     void burnVaultEntries();
 
     std::vector<VaultEntry> VaultEntries;
-    std::vector<uint8_t> SecretKey;
-    std::vector<std::vector<uint8_t>> RawKeys;
-    bool Unlocked = false;
-    bool Initialized = false;
-    long lastSyncMillis;
-    long clientUtc;
+
+    std::vector<uint8_t> MasterPasswordHash;
+
+    std::vector<std::vector<uint8_t>> UnencryptedSecrets;
+
+    bool VaultUnlocked = false;
+
+    //Выполнена ли инициализация хранилища
+    bool VaultInitialized = false;
 };
 
 #endif //KEECHAIN_SALAVAT_H_GUARD

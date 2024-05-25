@@ -45,12 +45,7 @@ void discoverHandler(std::deque<std::string> & params)
 
 void syncHandler(std::deque<std::string> & params)
 {
-    if (params.empty())
-    {
-        SendErrorMessage("Malformed request: 0 tokens provided, 1 required");
-        return;
-    }
-    auto result = Salavat.Initialize(millis(), std::stoi(params[0]));
+    auto result = Salavat.Initialize();
 
     if (result == VAULT_INIT_RESULT::MALFORMED){
         Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "INIT_MALFORMED" });
@@ -79,7 +74,6 @@ void unlockHandler(std::deque<std::string> & params){
 }
 
 void serviceEEPROMHandler(std::deque<std::string> & params){
-    static const char* hex = "0123456789ABCDEF";
     auto t = Salavat._service_read_eeprom_header();
     SendDebugMessage("EEPROM READ COMPLETED, COUNT: ", std::to_string(t.size()).c_str());
     std::string result;
@@ -118,14 +112,15 @@ void storeSecretHandler(std::deque<std::string> & params){
 void generateHandler(std::deque<std::string> &params) {
     auto& reflector = EnumReflector::For<VAULT_GET_KEY_RESULT>();
 
-    if (params.size() < 1){
+    if (params.size() < 2){
         Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS" });
         return;
     }
 
     auto index = std::stoi(params[0]);
+    auto currentUtc = std::stol(params[1]);
 
-    auto result = Salavat.getKey(index);
+    auto result = Salavat.getKey(index, currentUtc);
     auto status = result.first;
     auto& status_name = reflector[static_cast<uint8_t>(status)].Name();
     auto code = result.second;
@@ -140,8 +135,8 @@ void generateHandler(std::deque<std::string> &params) {
 }
 
 //WARLIN<PART>DISCOVER
-//WARLIN<PART>SYNC<PART>1716658045
+//WARLIN<PART>SYNC
 //WARLIN<PART>UNLOCK<PART>123
-//WARLIN<PART>STORE_ENTRY<PART>Google<PART>123<PART>6
+//WARLIN<PART>STORE_ENTRY<PART>Google<PART>BADWWJBFAD<PART>6
 //WARLIN<PART>GET_ENTRIES
-//WARLIN<PART>GENERATE<PART>1
+//WARLIN<PART>GENERATE<PART>0<PART>1716660111

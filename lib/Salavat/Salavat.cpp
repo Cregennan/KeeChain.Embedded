@@ -18,11 +18,10 @@ bool verifySecretKey(const std::vector<uint8_t> & encryptedSecret, const std::ve
 
 std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vector<uint8_t> & secretKey);
 
-VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_utc) {
-    this->lastSyncMillis = last_sync_millis;
-    this->clientUtc = client_utc;
+std::vector<uint8_t> decryptWithMasterKey(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & masterPassword);
 
-    if (this->Initialized){
+VAULT_INIT_RESULT Salavat_::Initialize() {
+    if (this->VaultInitialized){
         return VAULT_INIT_RESULT::ALREADY_INITIALIZED;
     }
 
@@ -34,7 +33,7 @@ VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_ut
 
         ForceReset();
 
-        this->Initialized = true;
+        this->VaultInitialized = true;
 
         return VAULT_INIT_RESULT::SUCCESS_NEWBORN;
     }
@@ -76,7 +75,7 @@ VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_ut
         entry.Secret = secret;
         VaultEntries.push_back(entry);
     }
-    this->Initialized = true;
+    this->VaultInitialized = true;
 
     return VAULT_INIT_RESULT::SUCCESS;
 }
@@ -89,7 +88,7 @@ void Salavat_::ForceReset() {
 }
 
 VAULT_ADD_ENTRY_RESULT Salavat_::addEntry(const std::string & name, const std::string & rawSecret, int digitsCount = 6) {
-    if (!this->Unlocked){
+    if (!this->VaultUnlocked){
         return VAULT_ADD_ENTRY_RESULT::VAULT_IS_LOCKED;
     }
 
@@ -108,16 +107,16 @@ VAULT_ADD_ENTRY_RESULT Salavat_::addEntry(const std::string & name, const std::s
     VaultEntry entry;
     entry.Name = name;
     entry.Digits = digitsCount;
-    entry.Secret = encryptSecret(rawSecret, this->SecretKey);
+    entry.Secret = encryptSecret(rawSecret, this->MasterPasswordHash);
     std::vector<uint8_t> rawSecretBytes(rawSecret.begin(), rawSecret.end());
     this->VaultEntries.push_back(entry);
-    this->RawKeys.push_back(rawSecretBytes);
+    this->UnencryptedSecrets.push_back(rawSecretBytes);
     this->burnVaultEntries();
     return VAULT_ADD_ENTRY_RESULT::SUCCESS;
 }
 
 VAULT_REMOVE_ENTRY_RESULT Salavat_::removeEntry(int entryId) {
-    if(!this->Unlocked){
+    if(!this->VaultUnlocked){
         return VAULT_REMOVE_ENTRY_RESULT::VAULT_IS_LOCKED;
     }
     if (entryId < 0 || entryId >= VaultEntries.size()){
@@ -125,7 +124,7 @@ VAULT_REMOVE_ENTRY_RESULT Salavat_::removeEntry(int entryId) {
     }
 
     VaultEntries.erase(VaultEntries.begin() + entryId);
-    RawKeys.erase(RawKeys.begin() + entryId);
+    UnencryptedSecrets.erase(UnencryptedSecrets.begin() + entryId);
     this->burnVaultEntries();
 
     return VAULT_REMOVE_ENTRY_RESULT::SUCCESS;
@@ -164,43 +163,57 @@ VAULT_UNLOCK_RESULT Salavat_::unlock(const std::string & password) {
     if (password.empty() || password.size() > TOTP_KEY_PASSWORD_MAX_LENGTH){
         return VAULT_UNLOCK_RESULT::MALFORMED_PASSWORD;
     }
-    if (!this->Initialized){
+    if (!this->VaultInitialized){
         return VAULT_UNLOCK_RESULT::NOT_INITIALIZED;
     }
 
     Sha1.init();
     Sha1.print(password.c_str());
-    auto resultPointer = Sha1.result();
-    std::vector<uint8_t> secretKey(resultPointer, resultPointer + 20);
+    auto hashPointer = Sha1.result();
+    std::vector<uint8_t> passwordHash(hashPointer, hashPointer + 20);
 
     if (this->VaultEntries.empty()){
-        this->Unlocked = true;
-        this->SecretKey = secretKey;
+        this->VaultUnlocked = true;
+        this->MasterPasswordHash = passwordHash;
         return VAULT_UNLOCK_RESULT::SUCCESS;
     }
 
-    if (verifySecretKey(this->VaultEntries[0].Secret, secretKey)){
-        this->Unlocked = true;
-        this->SecretKey = secretKey;
+    if (verifySecretKey(this->VaultEntries[0].Secret, passwordHash)){
+        this->VaultUnlocked = true;
+        this->MasterPasswordHash = passwordHash;
+        this->UnencryptedSecrets.clear();
+
+        for(auto& entry : this->VaultEntries){
+            this->UnencryptedSecrets.push_back(decryptWithMasterKey(entry.Secret, passwordHash));
+        }
+
         return VAULT_UNLOCK_RESULT::SUCCESS;
     }else{
         return VAULT_UNLOCK_RESULT::INVALID_PASSWORD;
     }
 }
 
-std::pair<VAULT_GET_KEY_RESULT, std::string> Salavat_::getKey(int entryId) {
-    if (!this->Initialized){
+std::pair<VAULT_GET_KEY_RESULT, std::string> Salavat_::getKey(int entryId, long currentUtc) {
+    if (!this->VaultInitialized){
         return std::make_pair(VAULT_GET_KEY_RESULT::VAULT_NOT_INITIALIZED,std::string());
     }
-    if (!this->Unlocked){
+    if (!this->VaultUnlocked){
         return std::make_pair(VAULT_GET_KEY_RESULT::VAULT_IS_LOCKED,std::string());
     }
     if (this->VaultEntries.empty() || entryId >= VaultEntries.size() || entryId < 0){
         return std::make_pair(VAULT_GET_KEY_RESULT::NOT_FOUND, std::string());
     }
 
-    TOTP totp(&this->SecretKey.front(), (int)this->SecretKey.size());
-    auto code = totp.getCode(this->clientUtc + (long)((millis() - this->lastSyncMillis) / 60));
+    auto& unencryptedSecret = this->UnencryptedSecrets[entryId];
+    auto rawSecret = std::string(unencryptedSecret.begin(), unencryptedSecret.end());
+
+    SendDebugMessage("Current UTC", std::to_string(currentUtc).c_str());
+    SendDebugMessage("Current secret", rawSecret.c_str());
+    SendDebugMessage("Unencrypted secret length", std::to_string(unencryptedSecret.size()).c_str());
+
+    TOTP totp(&unencryptedSecret.front(), (int)unencryptedSecret.size());
+    auto code = totp.getCode(currentUtc);
+
     return std::make_pair(VAULT_GET_KEY_RESULT::SUCCESS, std::string(code, code + 6));
 }
 
@@ -262,6 +275,11 @@ std::vector<uint8_t> decryptSecretWithMarkers(const std::vector<uint8_t> & encry
     }
 
     return result;
+}
+
+std::vector<uint8_t> decryptWithMasterKey(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & masterPassword){
+    auto raw = decryptSecretWithMarkers(encryptedSecret, masterPassword);
+    return std::vector<uint8_t>(raw.begin() + 2, raw.end() - 2);
 }
 
 bool verifySecretKey(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & secretKey){
