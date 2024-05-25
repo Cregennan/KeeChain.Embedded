@@ -30,7 +30,7 @@ Z_ENUM_NS(
     UNLOCK,
     GET_ENTRIES,
     STORE_ENTRY,
-    GET_TOTP,
+    GENERATE,
     SERVICE_TRY_READ_EEPROM
 );
 
@@ -40,6 +40,7 @@ Z_ENUM_NS(
     SYNCR,
     SERVICE,
     ENTRIES,
+    OTP,
     ERROR
 );
 

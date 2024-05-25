@@ -22,6 +22,10 @@ VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_ut
     this->lastSyncMillis = last_sync_millis;
     this->clientUtc = client_utc;
 
+    if (this->Initialized){
+        return VAULT_INIT_RESULT::ALREADY_INITIALIZED;
+    }
+
     auto entriesCount = EEPROM.read(2);
 
     if (EEPROM_MARKER_0 != EEPROM.read(0)
@@ -38,6 +42,7 @@ VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_ut
     auto grandOffset = 3;
 
     SendDebugMessage("ENTRIES FOUND: ", std::to_string(entriesCount).c_str());
+    VaultEntries.clear();
 
     for(auto i = 0; i < entriesCount; i++){
         //Secret name
@@ -53,7 +58,8 @@ VAULT_INIT_RESULT Salavat_::Initialize(time_t last_sync_millis, time_t client_ut
 
         //Secret contents
         auto secretLength = EEPROM.read(grandOffset++);
-        if (secretLength > TOTP_KEY_SECRET_MAX_LENGTH || secretLength == 0){
+        if (secretLength > TOTP_KEY_SECRET_MAX_LENGTH || secretLength <= 0){
+            SendDebugMessage("Secret contents malformed, secret length: ", std::to_string(secretLength).c_str());
             return VAULT_INIT_RESULT::MALFORMED;
         }
         std::vector<uint8_t> secret;
@@ -128,18 +134,26 @@ VAULT_REMOVE_ENTRY_RESULT Salavat_::removeEntry(int entryId) {
 void Salavat_::burnVaultEntries() {
     EEPROM.write(0, EEPROM_MARKER_0);
     EEPROM.write(1, EEPROM_MARKER_1);
+    SendDebugMessage("Burning entries length: ", std::to_string(VaultEntries.size()).c_str());
     EEPROM.write(2, VaultEntries.size());
     auto grandIndex = 3;
 
     for(const auto & entry : VaultEntries){
+        SendDebugMessage("Burning name length: ", std::to_string(entry.Name.size()).c_str());
         EEPROM.write(grandIndex++, entry.Name.size());
         for(auto& c : entry.Name){
+            SendDebugMessage("Burning name byte: ", std::to_string(c).c_str());
             EEPROM.write(grandIndex++, c);
         }
+
+        SendDebugMessage("Burning secret length: ", std::to_string(entry.Secret.size()).c_str());
         EEPROM.write(grandIndex++, entry.Secret.size());
         for(auto& c : entry.Secret){
+            SendDebugMessage("Burning secret byte: ", std::to_string(c).c_str());
             EEPROM.write(grandIndex++, c);
         }
+
+        SendDebugMessage("Burning digits: ", std::to_string(entry.Digits).c_str());
         EEPROM.write(grandIndex++, entry.Digits);
     }
 
@@ -181,7 +195,7 @@ std::pair<VAULT_GET_KEY_RESULT, std::string> Salavat_::getKey(int entryId) {
     if (!this->Unlocked){
         return std::make_pair(VAULT_GET_KEY_RESULT::VAULT_IS_LOCKED,std::string());
     }
-    if (this->VaultEntries.empty() || entryId >= VaultEntries.size() || entryId <= 0){
+    if (this->VaultEntries.empty() || entryId >= VaultEntries.size() || entryId < 0){
         return std::make_pair(VAULT_GET_KEY_RESULT::NOT_FOUND, std::string());
     }
 
@@ -203,7 +217,8 @@ std::size_t Salavat_::secretsCount() {
 }
 
 std::vector<std::string> Salavat_::getEntryNames() {
-    std::vector<std::string> acc(this->VaultEntries.size());
+    std::vector<std::string> acc;
+    acc.reserve(this->VaultEntries.size()); // reserve для оптимизации push_back. Не путать с resize
     for (const auto &item: this->VaultEntries){
         acc.push_back(item.Name);
     }
@@ -212,9 +227,11 @@ std::vector<std::string> Salavat_::getEntryNames() {
 
 std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vector<uint8_t> & secretKey) {
     std::vector<uint8_t> result;
-    result.reserve(rawSecret.size() + 4);
+    result.resize(rawSecret.size() + 4);
     result[0] = SECRET_LEFT_MARKER_0 ^ secretKey[0];
     result[1] = SECRET_LEFT_MARKER_1 ^ secretKey[1];
+    SendDebugMessage("Raw secret: ", rawSecret.c_str());
+    SendDebugMessage("Secret key: ", std::string(secretKey.begin(), secretKey.end()).c_str());
 
     auto secretKeySize = secretKey.size();
     auto rawSecretSize = rawSecret.size();
@@ -227,6 +244,8 @@ std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vec
     result[rawSecretSize + 2] = SECRET_RIGHT_MARKER_0 ^ secretKey[secretKeyIndex];
     secretKeyIndex = (secretKeyIndex + 1) % (int)secretKeySize;
     result[rawSecretSize + 3] = SECRET_RIGHT_MARKER_1 ^ secretKey[secretKeyIndex];
+
+    SendDebugMessage("Result length: ", std::to_string(result.size()).c_str());
 
     return result;
 }

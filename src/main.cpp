@@ -11,6 +11,7 @@ void serviceEEPROMHandler(std::deque<std::string> & params);
 void unlockHandler(std::deque<std::string> & params);
 void getStoredNamesHandler(std::deque<std::string> & params);
 void storeSecretHandler(std::deque<std::string> & params);
+void generateHandler(std::deque<std::string> & params);
 
 void setup() {
     Serial.begin(DEFAULT_BAUDRATE);
@@ -25,6 +26,7 @@ void setup() {
     Warlin.bind(PROTOCOL_REQUEST_TYPE::UNLOCK, unlockHandler);
     Warlin.bind(PROTOCOL_REQUEST_TYPE::GET_ENTRIES, getStoredNamesHandler);
     Warlin.bind(PROTOCOL_REQUEST_TYPE::STORE_ENTRY, storeSecretHandler);
+    Warlin.bind(PROTOCOL_REQUEST_TYPE::GENERATE, generateHandler);
 }
 
 void loop() {
@@ -113,8 +115,33 @@ void storeSecretHandler(std::deque<std::string> & params){
     Warlin.writeLine(PROTOCOL_RESPONSE_TYPE::ACK);
 }
 
+void generateHandler(std::deque<std::string> &params) {
+    auto& reflector = EnumReflector::For<VAULT_GET_KEY_RESULT>();
+
+    if (params.size() < 1){
+        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS" });
+        return;
+    }
+
+    auto index = std::stoi(params[0]);
+
+    auto result = Salavat.getKey(index);
+    auto status = result.first;
+    auto& status_name = reflector[static_cast<uint8_t>(status)].Name();
+    auto code = result.second;
+
+    if (status != VAULT_GET_KEY_RESULT::SUCCESS){
+
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), std::string(status_name)});
+        return;
+    }
+
+    Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::OTP), code});
+}
+
 //WARLIN<PART>DISCOVER
-//WARLIN<PART>SYNC<PART>1714312264
+//WARLIN<PART>SYNC<PART>1716658045
 //WARLIN<PART>UNLOCK<PART>123
 //WARLIN<PART>STORE_ENTRY<PART>Google<PART>123<PART>6
 //WARLIN<PART>GET_ENTRIES
+//WARLIN<PART>GENERATE<PART>1
