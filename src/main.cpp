@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "Salavat.h"
 #include "Warlin.h"
+#include "TOTP.h"
 
 Warlin_ Warlin;
 Salavat_ Salavat;
@@ -12,6 +13,7 @@ void unlockHandler(std::deque<std::string> & params);
 void getStoredNamesHandler(std::deque<std::string> & params);
 void storeSecretHandler(std::deque<std::string> & params);
 void generateHandler(std::deque<std::string> & params);
+void testGenerateOTPByExplicitSecret(std::deque<std::string> & params);
 
 void setup() {
     Serial.begin(DEFAULT_BAUDRATE);
@@ -27,6 +29,7 @@ void setup() {
     Warlin.bind(PROTOCOL_REQUEST_TYPE::GET_ENTRIES, getStoredNamesHandler);
     Warlin.bind(PROTOCOL_REQUEST_TYPE::STORE_ENTRY, storeSecretHandler);
     Warlin.bind(PROTOCOL_REQUEST_TYPE::GENERATE, generateHandler);
+    Warlin.bind(PROTOCOL_REQUEST_TYPE::TEST_EXPLICIT_CODE, testGenerateOTPByExplicitSecret);
 }
 
 void loop() {
@@ -134,9 +137,34 @@ void generateHandler(std::deque<std::string> &params) {
     Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::OTP), code});
 }
 
+void testGenerateOTPByExplicitSecret(std::deque<std::string> &params) {
+    if (params.size() < 2) {
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS"});
+        return;
+    }
+
+    auto secret = params[0];
+    auto currentUtc = std::stol(params[1]);
+
+    auto decoded = decodeBase32Secret(secret);
+    auto decodedPointer = decoded.data();
+    auto decodedLength = decoded.size();
+
+#ifdef KEECHAIN_DEBUG_ENABLED
+    SendDebugMessage("Bytes parsed from secret key: ", vectorToHex(decoded).c_str());
+#endif
+
+    TOTP totp(decodedPointer, decodedLength);
+
+    auto code = totp.getCode(currentUtc);
+
+    Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::OTP), std::string(code)});
+}
+
 //WARLIN<PART>DISCOVER
 //WARLIN<PART>SYNC
 //WARLIN<PART>UNLOCK<PART>123
 //WARLIN<PART>STORE_ENTRY<PART>Google<PART>BADWWJBFAD<PART>6
 //WARLIN<PART>GET_ENTRIES
 //WARLIN<PART>GENERATE<PART>0<PART>1716660111
+//WARLIN<PART>TEST_EXPLICIT_CODE<PART>JBSWY3DPEHPK3PXP<PART>1716740851

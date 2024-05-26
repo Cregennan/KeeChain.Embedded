@@ -89,4 +89,9 @@ private:
     bool VaultInitialized = false;
 };
 
+std::vector<uint8_t> decodeBase32Secret(std::string secret);
+
+std::string vectorToHex(std::vector<uint8_t> & vector);
+
+
 #endif //KEECHAIN_SALAVAT_H_GUARD

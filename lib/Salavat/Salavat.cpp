@@ -4,6 +4,7 @@
 #include <TOTP.h>
 #include "FlashStorage_SAMD.h"
 #include "Warlin.h"
+#include "Base32.h"
 
 const auto EEPROM_MARKER_0 = 0xBA;
 const auto EEPROM_MARKER_1 = 0xBE;
@@ -16,7 +17,7 @@ std::vector<uint8_t> decryptSecretWithMarkers(const std::vector<uint8_t> & encry
 
 bool verifySecretKey(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & secretKey);
 
-std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vector<uint8_t> & secretKey);
+std::vector<uint8_t> encryptSecret(const std::string & rawSecretString, const std::vector<uint8_t> & secretKey);
 
 std::vector<uint8_t> decryptWithMasterKey(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & masterPassword);
 
@@ -108,7 +109,8 @@ VAULT_ADD_ENTRY_RESULT Salavat_::addEntry(const std::string & name, const std::s
     entry.Name = name;
     entry.Digits = digitsCount;
     entry.Secret = encryptSecret(rawSecret, this->MasterPasswordHash);
-    std::vector<uint8_t> rawSecretBytes(rawSecret.begin(), rawSecret.end());
+
+    auto rawSecretBytes = decodeBase32Secret(rawSecret);
     this->VaultEntries.push_back(entry);
     this->UnencryptedSecrets.push_back(rawSecretBytes);
     this->burnVaultEntries();
@@ -240,18 +242,24 @@ std::vector<std::string> Salavat_::getEntryNames() {
 
 std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vector<uint8_t> & secretKey) {
     std::vector<uint8_t> result;
-    result.resize(rawSecret.size() + 4);
+    auto rawSecretDecoded = decodeBase32Secret(rawSecret);
+    result.resize(rawSecretDecoded.size() + 4);
     result[0] = SECRET_LEFT_MARKER_0 ^ secretKey[0];
     result[1] = SECRET_LEFT_MARKER_1 ^ secretKey[1];
-    SendDebugMessage("Raw secret: ", rawSecret.c_str());
+
+#ifdef KEECHAIN_DEBUG_ENABLED
+    auto hex = vectorToHex(rawSecretDecoded);
+    SendDebugMessage("Raw secret: ", hex.c_str());
+#endif
+
     SendDebugMessage("Secret key: ", std::string(secretKey.begin(), secretKey.end()).c_str());
 
     auto secretKeySize = secretKey.size();
-    auto rawSecretSize = rawSecret.size();
+    auto rawSecretSize = rawSecretDecoded.size();
     auto secretKeyIndex = 2;
 
     for(auto i = 0; i < rawSecretSize; i++ ){
-        result[i + 2] = rawSecret[i] ^ secretKey[secretKeyIndex];
+        result[i + 2] = rawSecretDecoded[i] ^ secretKey[secretKeyIndex];
         secretKeyIndex = (secretKeyIndex + 1) % (int)secretKeySize;
     }
     result[rawSecretSize + 2] = SECRET_RIGHT_MARKER_0 ^ secretKey[secretKeyIndex];
@@ -290,4 +298,27 @@ bool verifySecretKey(const std::vector<uint8_t> & encryptedSecret, const std::ve
             && decrypted[1] == SECRET_LEFT_MARKER_1
             && decrypted[size - 2] == SECRET_RIGHT_MARKER_0
             && decrypted[size - 1] == SECRET_RIGHT_MARKER_1;
+}
+
+std::vector<uint8_t> decodeBase32Secret(std::string secret) {
+    Base32 base32;
+    byte* secretBytesPointer;
+
+    auto length = base32.fromBase32(const_cast<byte *>(reinterpret_cast<const byte *>(secret.c_str())), secret.size(), secretBytesPointer);
+    return std::vector<uint8_t>(secretBytesPointer, secretBytesPointer + length);
+}
+
+std::string vectorToHex(std::vector<uint8_t> &vector) {
+    static const auto hex = "0123456789ABCDEF";
+    std::string str;
+    auto pointer = vector.data();
+    auto length = vector.size();
+
+    for(auto i = 0; i < length; i++){
+        str += (char)hex[pointer[i] / 16];
+        str += (char)hex[pointer[i] % 16];
+        str += " ";
+    }
+
+    return str;
 }
