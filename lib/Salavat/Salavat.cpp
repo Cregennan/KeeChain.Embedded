@@ -273,7 +273,7 @@ std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vec
 
 std::vector<uint8_t> decryptSecretWithMarkers(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & secretKey){
     std::vector<uint8_t> result;
-    result.reserve(encryptedSecret.size());
+    result.resize(encryptedSecret.size());
     auto secretKeyIndex = 0;
     auto secretKeyLength = secretKey.size();
 
