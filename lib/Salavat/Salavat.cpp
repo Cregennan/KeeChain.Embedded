@@ -51,7 +51,7 @@ VAULT_INIT_RESULT Salavat_::Initialize() {
             return VAULT_INIT_RESULT::MALFORMED;
         }
         std::string name;
-        name.reserve(nameLength);
+        name.resize(nameLength);
         for(auto nc = 0; nc < nameLength; nc++){
             name[nc] = EEPROM.read(grandOffset++);
         }
@@ -63,7 +63,7 @@ VAULT_INIT_RESULT Salavat_::Initialize() {
             return VAULT_INIT_RESULT::MALFORMED;
         }
         std::vector<uint8_t> secret;
-        secret.reserve(secretLength);
+        secret.resize(secretLength);
         for(auto sc = 0; sc < secretLength; sc++){
             secret[sc] = EEPROM.read(grandOffset++);
         }
@@ -175,6 +175,7 @@ VAULT_UNLOCK_RESULT Salavat_::unlock(const std::string & password) {
     std::vector<uint8_t> passwordHash(hashPointer, hashPointer + 20);
 
     if (this->VaultEntries.empty()){
+        SendDebugMessage("Salavat: vault was empty");
         this->VaultUnlocked = true;
         this->MasterPasswordHash = passwordHash;
         return VAULT_UNLOCK_RESULT::SUCCESS;
@@ -272,6 +273,10 @@ std::vector<uint8_t> encryptSecret(const std::string & rawSecret, const std::vec
 }
 
 std::vector<uint8_t> decryptSecretWithMarkers(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & secretKey){
+    auto bytes = encryptedSecret;
+
+    SendDebugMessage("Salavat: encrypted secret: ", vectorToHex(bytes).c_str());
+
     std::vector<uint8_t> result;
     result.resize(encryptedSecret.size());
     auto secretKeyIndex = 0;
@@ -292,6 +297,9 @@ std::vector<uint8_t> decryptWithMasterKey(const std::vector<uint8_t> & encrypted
 
 bool verifySecretKey(const std::vector<uint8_t> & encryptedSecret, const std::vector<uint8_t> & secretKey){
     auto decrypted = decryptSecretWithMarkers(encryptedSecret, secretKey);
+
+    SendDebugMessage("Salavat: decrypted key with markers: ", vectorToHex(decrypted).c_str());
+
     auto size = decrypted.size();
     return size > 4
             && decrypted[0] == SECRET_LEFT_MARKER_0
