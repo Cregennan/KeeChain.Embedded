@@ -180,10 +180,6 @@ void removeEntryHandler(std::deque<std::string> &params){
     }
 
     auto index = std::stoi(params[0]);
-    if (index < 0 || index >= Salavat.secretsCount()){
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_INVALID_INDEX});
-        return;
-    }
 
     auto result = Salavat.removeEntry(index);
     if (result == VAULT_REMOVE_ENTRY_RESULT::SUCCESS){
@@ -201,3 +197,4 @@ void removeEntryHandler(std::deque<std::string> &params){
 //WARLIN<PART>GET_ENTRIES
 //WARLIN<PART>GENERATE<PART>0<PART>1716740958
 //WARLIN<PART>TEST_EXPLICIT_CODE<PART>JBSWY3DPEHPK3PXP<PART>1716740851
+//WARLIN<PART>REMOVE_ENTRY<PART>0
