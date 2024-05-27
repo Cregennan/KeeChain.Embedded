@@ -211,4 +211,10 @@ inline const EnumReflector::Enumerator& EnumReflector::Enumerator::operator*() c
     return *this;
 }
 
+template<typename EnumType>
+inline std::string NameOf(EnumType value){
+    auto& reflector = EnumReflector::For<EnumType>();
+    return reflector[static_cast<uint8_t>(value)].Name();
+}
+
 #endif//GUARD

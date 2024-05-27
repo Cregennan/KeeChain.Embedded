@@ -1,8 +1,5 @@
-#include <Arduino.h>
-#include "Salavat.h"
-#include "Warlin.h"
-#include "TOTP.h"
 #include "main.h"
+#include "TOTP.h"
 
 /*
  * Обработчик DISCOVER
@@ -24,7 +21,7 @@ void syncHandler(std::deque<std::string> & params)
     auto result = Salavat.Initialize();
 
     if (result == VAULT_INIT_RESULT::MALFORMED){
-        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "INIT_MALFORMED" });
+        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_INIT_MALFORMED });
         return;
     }
 
@@ -37,17 +34,15 @@ void syncHandler(std::deque<std::string> & params)
  * Отвечает ACK
  */
 void unlockHandler(std::deque<std::string> & params){
-    const auto& reflector = EnumReflector::For<VAULT_UNLOCK_RESULT>();
-
     if (params.size() < 1){
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS"});
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_NOT_ENOUGH_PARAMS});
         return;
     }
+
     auto password = params[0];
     auto unlockResult = Salavat.unlock(password);
     if (unlockResult != VAULT_UNLOCK_RESULT::SUCCESS){
-        auto unlockResultValue = static_cast<uint8_t>(unlockResult);
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), reflector[unlockResultValue].Name()});
+        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), NameOf(unlockResult) });
         return;
     }
 
@@ -93,19 +88,18 @@ void getStoredNamesHandler(std::deque<std::string> & params){
  * Возвращает ACK
  */
 void storeSecretHandler(std::deque<std::string> & params){
-    auto& reflector = EnumReflector::For<VAULT_ADD_ENTRY_RESULT>();
-
     if (params.size() < 3){
-        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS" });
+        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_NOT_ENOUGH_PARAMS });
         return;
     }
     auto digits = std::stoi(params[2]);
     auto result = Salavat.addEntry(params[0], params[1], digits);
+
     if (result != VAULT_ADD_ENTRY_RESULT::SUCCESS){
-        auto& name = reflector[static_cast<uint8_t>(result)].Name();
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), name});
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), NameOf(result)});
         return;
     }
+
     Warlin.writeLine(PROTOCOL_RESPONSE_TYPE::ACK);
 }
 
@@ -118,10 +112,9 @@ void storeSecretHandler(std::deque<std::string> & params){
  * - string одноразовый код
  */
 void generateHandler(std::deque<std::string> &params) {
-    auto& reflector = EnumReflector::For<VAULT_GET_KEY_RESULT>();
 
     if (params.size() < 2){
-        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS" });
+        Warlin.writeLine({ NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_NOT_ENOUGH_PARAMS });
         return;
     }
 
@@ -130,12 +123,11 @@ void generateHandler(std::deque<std::string> &params) {
 
     auto result = Salavat.getKey(index, currentUtc);
     auto status = result.first;
-    auto& status_name = reflector[static_cast<uint8_t>(status)].Name();
     auto code = result.second;
 
     if (status != VAULT_GET_KEY_RESULT::SUCCESS){
 
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), std::string(status_name)});
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), NameOf(status)});
         return;
     }
 
@@ -153,7 +145,7 @@ void generateHandler(std::deque<std::string> &params) {
  */
 void testGenerateOTPByExplicitSecret(std::deque<std::string> &params) {
     if (params.size() < 2) {
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS"});
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_NOT_ENOUGH_PARAMS});
         return;
     }
 
@@ -183,13 +175,13 @@ void testGenerateOTPByExplicitSecret(std::deque<std::string> &params) {
  */
 void removeEntryHandler(std::deque<std::string> &params){
     if (params.size() < 1) {
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "NOT_ENOUGH_PARAMS"});
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_NOT_ENOUGH_PARAMS});
         return;
     }
 
     auto index = std::stoi(params[0]);
     if (index < 0 || index >= Salavat.secretsCount()){
-        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), "INVALID_INDEX"});
+        Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), ANSWER_INVALID_INDEX});
         return;
     }
 
@@ -199,9 +191,7 @@ void removeEntryHandler(std::deque<std::string> &params){
         return;
     }
 
-    auto& reflector = EnumReflector::For<VAULT_REMOVE_ENTRY_RESULT>();
-    auto name = reflector[static_cast<uint8_t>(result)].Name();
-    Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), name});
+    Warlin.writeLine({NameOf(PROTOCOL_RESPONSE_TYPE::ERROR), NameOf(result)});
 }
 
 //WARLIN<PART>DISCOVER

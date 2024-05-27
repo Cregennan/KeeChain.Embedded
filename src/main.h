@@ -2,6 +2,10 @@
 // Created by Cregennan on 27.05.2024.
 //
 
+#include "Salavat.h"
+#include "Warlin.h"
+
+
 #ifndef KEECHAIN_EMBEDDED_MAIN_H
 #define KEECHAIN_EMBEDDED_MAIN_H
 
@@ -45,6 +49,8 @@ void loop() {
     delay(100);
 }
 
-#define
+#define ANSWER_INIT_MALFORMED "INIT_MALFORMED"
+#define ANSWER_NOT_ENOUGH_PARAMS "NOT_ENOUGH_PARAMS"
+#define ANSWER_INVALID_INDEX "INVALID_INDEX"
 
 #endif //KEECHAIN_EMBEDDED_MAIN_H

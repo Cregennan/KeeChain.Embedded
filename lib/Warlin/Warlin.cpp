@@ -119,20 +119,6 @@ void Warlin_::writeLine(PROTOCOL_RESPONSE_TYPE type) {
     Serial.write('\n');
 }
 
-std::string NameOf(const PROTOCOL_REQUEST_TYPE type)
-{
-    const auto index = static_cast<uint8_t>(type);
-    const auto& reflector = EnumReflector::For<PROTOCOL_REQUEST_TYPE>();
-    return reflector[index].Name();
-}
-
-std::string NameOf(const PROTOCOL_RESPONSE_TYPE type)
-{
-    const auto index = static_cast<uint8_t>(type);
-    const auto& reflector = EnumReflector::For<PROTOCOL_RESPONSE_TYPE>();
-    return reflector[index].Name();
-}
-
 void SendDebugMessage(const char * const message)
 {
     #ifdef KEECHAIN_DEBUG_ENABLED

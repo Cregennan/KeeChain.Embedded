@@ -61,10 +61,6 @@ class Warlin_
         std::unordered_map<PROTOCOL_REQUEST_TYPE, void(*)(std::deque<std::string>&)> listeners{};
 };
 
-std::string NameOf(PROTOCOL_REQUEST_TYPE);
-
-std::string NameOf(PROTOCOL_RESPONSE_TYPE);
-
 void SendDebugMessage(const char * message);
 
 void SendDebugMessage(const char * part1, const char * part2);
